@@ -1,1 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Retail Analytics Text-to-SQL — Submit a Use Case</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
 
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-label">Open Dataset</div>
+      <h1 class="site-title">Retail Analytics<br><em>Text-to-SQL</em></h1>
+      <p class="site-subtitle">Share a real-world retail analytics use case to help train better AI systems. Every contribution builds a richer, more accurate dataset.</p>
+      <div class="header-stats">
+        <div class="stat"><span class="stat-num">5</span><span class="stat-label">Example Entries</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">5</span><span class="stat-label">Required Fields</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">∞</span><span class="stat-label">Use Cases Needed</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <div class="form-card">
+      <div class="form-card-header">
+        <span class="form-step-badge">New Submission</span>
+        <h2 class="form-card-title">Describe Your Use Case</h2>
+        <p class="form-card-desc">Fill in as many fields as you can. The SQL field is optional — but encouraged. All fields marked <span class="required-mark">*</span> are required.</p>
+      </div>
+
+      <div id="success-banner" class="success-banner hidden">
+        <div class="success-icon">✓</div>
+        <div class="success-text">
+          <strong>Your JSON is ready!</strong>
+          <span>Copy the output below and save it as a <code>.json</code> file in <code>submissions/pending/</code> before opening a Pull Request.</span>
+        </div>
+      </div>
+
+      <form id="submission-form" novalidate>
+
+        <div class="field-group">
+          <label class="field-label" for="question">
+            Business Question <span class="required-mark">*</span>
+            <span class="field-hint">Write this as a business user would naturally ask it</span>
+          </label>
+          <textarea id="question" name="question" class="field-input field-textarea" rows="3"
+            placeholder="e.g. Which product categories had declining revenue in Q4 compared to Q3?"></textarea>
+          <div class="field-error" id="error-question"></div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="context">
+            Business Context <span class="required-mark">*</span>
+            <span class="field-hint">Who is asking this? What decision does the answer support?</span>
+          </label>
+          <textarea id="context" name="context" class="field-input field-textarea" rows="4"
+            placeholder="e.g. The merchandising team is preparing for annual planning and wants to understand which categories are growing vs. declining to inform inventory investment decisions."></textarea>
+          <div class="field-error" id="error-context"></div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="business_logic">
+            Business Logic <span class="required-mark">*</span>
+            <span class="field-hint">Explain the reasoning in plain language — no SQL jargon needed</span>
+          </label>
+          <textarea id="business_logic" name="business_logic" class="field-input field-textarea" rows="4"
+            placeholder="e.g. Revenue is compared quarter-over-quarter by summing net sales per category. A decline is flagged when Q4 revenue is lower than Q3 revenue. Returns are excluded from all calculations."></textarea>
+          <div class="field-error" id="error-business_logic"></div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">
+            Tables Used <span class="required-mark">*</span>
+            <span class="field-hint">Select all tables that your query references</span>
+          </label>
+          <div class="checkbox-grid">
+            <label class="checkbox-item">
+              <input type="checkbox" name="tables" value="fact_sales" />
+              <span class="checkbox-box"></span>
+              <span class="checkbox-label"><code>fact_sales</code></span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="tables" value="dim_product" />
+              <span class="checkbox-box"></span>
+              <span class="checkbox-label"><code>dim_product</code></span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="tables" value="dim_store" />
+              <span class="checkbox-box"></span>
+              <span class="checkbox-label"><code>dim_store</code></span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="tables" value="dim_date" />
+              <span class="checkbox-box"></span>
+              <span class="checkbox-label"><code>dim_date</code></span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="tables" value="dim_customer" />
+              <span class="checkbox-box"></span>
+              <span class="checkbox-label"><code>dim_customer</code></span>
+            </label>
+          </div>
+          <div class="field-error" id="error-tables"></div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="sql">
+            SQL Query
+            <span class="field-hint optional-tag">Optional — but strongly encouraged</span>
+          </label>
+          <textarea id="sql" name="sql" class="field-input field-textarea field-mono" rows="8"
+            placeholder="SELECT p.category, SUM(s.net_sales) AS revenue&#10;FROM fact_sales s&#10;JOIN dim_product p ON s.product_id = p.product_id&#10;..."></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="reset-btn" class="btn btn-secondary">Reset Form</button>
+          <button type="submit" id="submit-btn" class="btn btn-primary">
+            <span class="btn-text">Generate JSON</span>
+            <span class="btn-icon">→</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+    <div id="output-section" class="output-section hidden">
+      <div class="output-header">
+        <h3 class="output-title">Generated JSON</h3>
+        <button id="copy-btn" class="btn btn-copy">Copy to Clipboard</button>
+      </div>
+      <pre id="json-output" class="json-output"></pre>
+      <div class="output-instructions">
+        <div class="instruction-step">
+          <span class="step-num">1</span>
+          <span>Save this as <code>submissions/pending/retail_&lt;topic&gt;_&lt;description&gt;.json</code></span>
+        </div>
+        <div class="instruction-step">
+          <span class="step-num">2</span>
+          <span>Fork the repository and add your file</span>
+        </div>
+        <div class="instruction-step">
+          <span class="step-num">3</span>
+          <span>Open a Pull Request — a maintainer will review it within 7 days</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>Retail Analytics Text-to-SQL Dataset &mdash; Open Community Project &mdash; <a href="../README.md">README</a> &middot; <a href="../DATA_SPEC.md">Data Spec</a> &middot; <a href="../CONTRIBUTING.md">Contributing</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
