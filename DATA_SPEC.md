@@ -13,15 +13,6 @@ The Query Entry form captures high-quality Text-to-SQL training tuples by collec
 ### Problem it solves
 Text-to-SQL systems often fail due to poor or underspecified training data. This form standardizes tuple collection so backend/data teams can curate consistent, machine-consumable examples across domains and database types.
 
-### High-level data flow
-1. User enters form values in UI controls (dropdowns, textareas, dynamic lists).
-2. UI state is normalized into a payload object (`buildObj()`).
-3. Client-side validation blocks submit if required sections are empty.
-4. Valid payload is persisted through the app API layer (`api.data.create`), currently backed by browser `localStorage`.
-5. Persisted record is wrapped with metadata (`id`, `created_at`, `submitted_at`) for admin/list/export use.
-
-`User -> React Form State -> buildObj() Transformation -> validate() -> api.data.create() -> Stored DatasetRecord`
-
 ---
 
 ## 2. Form Structure Breakdown
