@@ -83,7 +83,7 @@ See [DATA_SPEC.md](./DATA_SPEC.md) for full field definitions and requirements.
 - 📋 [DATA_SPEC.md](./DATA_SPEC.md) — Full data specification and field guide
 - 📁 [examples/](./examples/) — Browse 5 high-quality example contributions
 - 🖊️ [templates/](./templates/) — JSON and Markdown templates to get started
-- 🌐 [UI Form](https://anubhavkumargupta.github.io/text2sql_data_collection_platform/) — Browser-based form for easy submission drafting
+- 🌐 [UI Form](https://infometry-infofiscus.github.io/text2sql_data_collection_platform/) — Browser-based form for easy submission drafting
 
 ---
 
