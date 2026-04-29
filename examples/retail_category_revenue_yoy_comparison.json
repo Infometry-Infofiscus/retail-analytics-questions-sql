@@ -1,0 +1,45 @@
+{
+  "q_id": 1,
+  "difficulty": "Medium",
+  "db_type": "Relational (SQL)",
+  "domain": "Retail",
+  "instruction": "Which product categories generated the most revenue last quarter, and how does that compare to the same quarter last year?",
+  "context": "Merchandising leadership preparing for annual planning meeting. Need to identify growing vs declining categories YoY to guide inventory investment, promotional spend, and category expansion decisions.",
+  "metrics_and_aggregation": [
+    {
+      "kpi_metric_name": "Category Revenue (Current Quarter)",
+      "aggregation_formula": "SUM(net_sales) WHERE year=2024 AND quarter=4, grouped by category"
+    },
+    {
+      "kpi_metric_name": "Category Revenue (Prior Year Quarter)",
+      "aggregation_formula": "SUM(net_sales) WHERE year=2023 AND quarter=4, grouped by category"
+    },
+    {
+      "kpi_metric_name": "YoY Revenue Change (Absolute)",
+      "aggregation_formula": "revenue_q4_2024 - revenue_q4_2023"
+    },
+    {
+      "kpi_metric_name": "YoY Revenue Change (%)",
+      "aggregation_formula": "ROUND(100.0 * (revenue_q4_2024 - revenue_q4_2023) / NULLIF(revenue_q4_2023, 0), 2)"
+    }
+  ],
+  "chain_of_thought": [
+    "Step 1: Goal is to rank product categories by net revenue for Q4 2024 and compare against Q4 2023 to surface YoY growth or decline.",
+    "Step 2: Need sales transaction data (fact_sales), product category mapping (dim_product), and calendar quarter info (dim_date).",
+    "Step 3: Filter to Q4 only (quarter=4), years 2023 and 2024. Exclude returns (is_return = FALSE).",
+    "Step 4: Revenue = SUM(net_sales) after discounts. Use conditional aggregation (CASE WHEN) to pivot both years into same row per category.",
+    "Step 5: Results grouped by category, ordered by Q4 2024 revenue descending to surface top performers first.",
+    "Step 6: NULLIF guards against division-by-zero for categories with no prior year sales. Edge case: new categories (revenue_q4_2023 = 0) will show NULL pct change.",
+    "Step 7: Only completed transactions counted. Returns excluded at filter level, not post-aggregation."
+  ],
+  "schema_tables": {
+    "fact_tables": ["fact_sales"],
+    "dimension_tables": ["dim_product", "dim_date"]
+  },
+  "data_model_layers": {
+    "hierarchies": "Date > Quarter > Year, Product > Category",
+    "aggregations": "agg_quarterly_revenue_by_category",
+    "snapshots": ""
+  },
+  "sql": "SELECT\n  p.category,\n  SUM(CASE WHEN d.year = 2024 AND d.quarter = 4 THEN s.net_sales ELSE 0 END) AS revenue_q4_2024,\n  SUM(CASE WHEN d.year = 2023 AND d.quarter = 4 THEN s.net_sales ELSE 0 END) AS revenue_q4_2023,\n  SUM(CASE WHEN d.year = 2024 AND d.quarter = 4 THEN s.net_sales ELSE 0 END)\n    - SUM(CASE WHEN d.year = 2023 AND d.quarter = 4 THEN s.net_sales ELSE 0 END) AS revenue_change,\n  ROUND(\n    100.0 * (\n      SUM(CASE WHEN d.year = 2024 AND d.quarter = 4 THEN s.net_sales ELSE 0 END)\n      - SUM(CASE WHEN d.year = 2023 AND d.quarter = 4 THEN s.net_sales ELSE 0 END)\n    ) / NULLIF(SUM(CASE WHEN d.year = 2023 AND d.quarter = 4 THEN s.net_sales ELSE 0 END), 0),\n  2) AS yoy_change_pct\nFROM fact_sales s\nJOIN dim_product p ON s.product_id = p.product_id\nJOIN dim_date d ON s.date_id = d.date_id\nWHERE s.is_return = FALSE\n  AND d.year IN (2023, 2024)\n  AND d.quarter = 4\nGROUP BY p.category\nORDER BY revenue_q4_2024 DESC;"
+}

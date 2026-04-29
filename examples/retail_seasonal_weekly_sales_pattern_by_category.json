@@ -1,0 +1,45 @@
+{
+  "q_id": 2,
+  "difficulty": "Hard",
+  "db_type": "Relational (SQL)",
+  "domain": "Retail",
+  "instruction": "Based on the past three years of weekly sales, which weeks of the year show the strongest and weakest sales patterns for each product category?",
+  "context": "Demand planning team building a seasonal sales calendar to guide procurement, staffing, and promotional scheduling. Identifying historically strong and weak weeks per category enables proactive stock alignment, marketing campaign timing, and clearance activity planning during slow periods.",
+  "metrics_and_aggregation": [
+    {
+      "kpi_metric_name": "Average Weekly Revenue (3-Year)",
+      "aggregation_formula": "AVG(SUM(net_sales)) grouped by category, iso_week across 3 prior years — smooths anomalous years"
+    },
+    {
+      "kpi_metric_name": "Annual Average Weekly Revenue per Category",
+      "aggregation_formula": "AVG(avg_weekly_revenue_3yr) grouped by category — used as seasonal baseline"
+    },
+    {
+      "kpi_metric_name": "Seasonality Index",
+      "aggregation_formula": "ROUND(avg_weekly_revenue_3yr / NULLIF(annual_avg_weekly_revenue, 0), 3) — >1.0 = above average, <1.0 = below average"
+    },
+    {
+      "kpi_metric_name": "Peak / Trough Rank",
+      "aggregation_formula": "RANK() OVER (PARTITION BY category ORDER BY avg_weekly_revenue_3yr DESC/ASC) — top 5 = Peak, bottom 5 = Trough"
+    }
+  ],
+  "chain_of_thought": [
+    "Step 1: Goal is to build a seasonal demand index per product category by ISO week, identifying top 5 peak and bottom 5 trough weeks across a 3-year historical window.",
+    "Step 2: Need sales facts (fact_sales) for net revenue, product dimension (dim_product) for category grouping, and date dimension (dim_date) for ISO week number and year extraction.",
+    "Step 3: Filter to non-returns (is_return = FALSE) and 3 prior complete years (YEAR(CURRENT_DATE) - 3 to YEAR(CURRENT_DATE) - 1). Current year excluded — incomplete data would skew averages.",
+    "Step 4: CTE 1 (weekly_category_sales) aggregates net revenue per category + week + year. CTE 2 (avg_by_week) averages across 3 years per category + iso_week. CTE 3 (category_annual_avg) computes per-category annual weekly baseline. CTE 4 (indexed) computes seasonality index and dual RANK() window functions (DESC for peak, ASC for trough).",
+    "Step 5: Final SELECT filters to peak_rank <= 5 OR trough_rank <= 5, applies CASE label (Peak / Trough / Normal — Normal excluded by WHERE), orders by category then iso_week for calendar-style readability.",
+    "Step 6: NULLIF guards division-by-zero in seasonality index. Edge case: categories with fewer than 3 years of data will have averages based on available years only — index still valid but less stable. Weeks with identical revenue may share ranks via RANK() ties.",
+    "Step 7: Seasonality index is a relative signal, not absolute revenue. A trough week in a high-revenue category may still outsell a peak week in a low-revenue one — downstream planning should layer absolute revenue alongside index."
+  ],
+  "schema_tables": {
+    "fact_tables": ["fact_sales"],
+    "dimension_tables": ["dim_product", "dim_date"]
+  },
+  "data_model_layers": {
+    "hierarchies": "Date > ISO Week > Year, Product > Category",
+    "aggregations": "agg_weekly_category_revenue_3yr, agg_seasonality_index",
+    "snapshots": "snap_seasonal_calendar_annual"
+  },
+  "sql": "WITH weekly_category_sales AS (\n  SELECT\n    p.category,\n    d.week AS iso_week,\n    d.year,\n    SUM(s.net_sales) AS weekly_revenue\n  FROM fact_sales s\n  JOIN dim_product p ON s.product_id = p.product_id\n  JOIN dim_date d ON s.date_id = d.date_id\n  WHERE s.is_return = FALSE\n    AND d.year BETWEEN YEAR(CURRENT_DATE) - 3 AND YEAR(CURRENT_DATE) - 1\n  GROUP BY p.category, d.week, d.year\n),\navg_by_week AS (\n  SELECT\n    category,\n    iso_week,\n    ROUND(AVG(weekly_revenue), 2) AS avg_weekly_revenue_3yr\n  FROM weekly_category_sales\n  GROUP BY category, iso_week\n),\ncategory_annual_avg AS (\n  SELECT\n    category,\n    ROUND(AVG(avg_weekly_revenue_3yr), 2) AS annual_avg_weekly_revenue\n  FROM avg_by_week\n  GROUP BY category\n),\nindexed AS (\n  SELECT\n    abw.category,\n    abw.iso_week,\n    abw.avg_weekly_revenue_3yr,\n    caa.annual_avg_weekly_revenue,\n    ROUND(abw.avg_weekly_revenue_3yr / NULLIF(caa.annual_avg_weekly_revenue, 0), 3) AS seasonality_index,\n    RANK() OVER (PARTITION BY abw.category ORDER BY abw.avg_weekly_revenue_3yr DESC) AS peak_rank,\n    RANK() OVER (PARTITION BY abw.category ORDER BY abw.avg_weekly_revenue_3yr ASC) AS trough_rank\n  FROM avg_by_week abw\n  JOIN category_annual_avg caa ON abw.category = caa.category\n)\nSELECT\n  category,\n  iso_week,\n  avg_weekly_revenue_3yr,\n  annual_avg_weekly_revenue,\n  seasonality_index,\n  CASE\n    WHEN peak_rank <= 5 THEN 'Peak'\n    WHEN trough_rank <= 5 THEN 'Trough'\n    ELSE 'Normal'\n  END AS week_classification\nFROM indexed\nWHERE peak_rank <= 5 OR trough_rank <= 5\nORDER BY category, iso_week;"
+}

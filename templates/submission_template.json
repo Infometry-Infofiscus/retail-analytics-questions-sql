@@ -1,7 +1,18 @@
 {
-  "question": "",
+  "domain": "",
+  "difficulty": "",
+  "db_type": "",
+  "instruction": "",
   "context": "",
-  "business_logic": "",
-  "tables_used": [],
+  "required_metrics_kpis": [],
+  "aggregation_logic": {},
+  "chain_of_thought": [],
+  "data_model": {
+    "facts": "",
+    "dims": "",
+    "hierarchies": "",
+    "aggrs": "",
+    "snapshots": ""
+  },
   "sql": ""
 }

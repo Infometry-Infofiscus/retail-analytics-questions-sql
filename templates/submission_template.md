@@ -1,38 +1,76 @@
 # Retail Analytics Use Case Submission
-
 Use this template to describe your retail analytics use case. Fill in each section below, then convert to JSON using `templates/submission_template.json` before placing in `submissions/pending/`.
 
 ---
 
-## Question
+## Difficulty
+*Select one: Easy / Medium / Hard / Very Hard*
 
+> Example: "Medium"
+
+---
+
+## DB Type
+*Select one: Relational (SQL) / NoSQL / Graph / Time-Series*
+
+> Example: "Relational (SQL)"
+
+---
+
+## Domain
+*Select one: Retail / HighTech (SaaS) / Finance / Healthcare / Supply Chain / ...*
+
+> Example: "Retail"
+
+---
+
+## Business Question (Instruction)
 *Write the business question here as a real user would ask it.*
 
 > Example: "Which stores had the highest return rate last quarter?"
 
 ---
 
-## Context
-
-*Describe the business scenario. Who is asking this question? What decision will the answer inform?*
+## Business Context
+*Who is asking? What decision will the answer inform?*
 
 > Example: "The regional operations team is conducting a quarterly performance review and wants to identify stores with abnormal return rates before meeting with store managers."
 
 ---
 
-## Business Logic
+## Metrics & Aggregation
+*List each KPI and its aggregation formula. Add as many rows as needed.*
 
-*Explain in plain language how to answer this question. What calculations, filters, or rules apply? Avoid referencing SQL syntax.*
-
-> Example: "Return rate is calculated as the number of returned transactions divided by total transactions. Only stores open for the full quarter are included. Stores are ranked from highest to lowest return rate."
+| KPI / Metric Name | Aggregation Formula |
+|---|---|
+| e.g. Store Return Rate (%) | e.g. COUNT(is_return=TRUE) / COUNT(*) grouped by store_id |
+| | |
 
 ---
 
-## Tables Used
+## Chain of Thought
+*Walk through your reasoning step by step. All 7 steps recommended.*
 
-*List the tables from the standard schema that are needed to answer this question.*
+1. **Step 1:** Explain the goal of the analysis and what you are trying to understand.
+2. **Step 2:** Describe the type of data needed (e.g. sales, customers, inventory).
+3. **Step 3:** Mention any conditions or filters applied (e.g. time period, exclusions).
+4. **Step 4:** Explain how key metrics are calculated (e.g. totals, averages, growth).
+5. **Step 5:** Describe how the final results are organized (e.g. grouped, sorted, ranked).
+6. **Step 6:** Mention any edge cases or alternative approaches.
+7. **Step 7:** Additional reasoning or assumptions.
 
+---
+
+## Schema Tables
+
+### Fact Tables
+*Check all that apply.*
 - [ ] fact_sales
+- [ ] fact_inventory
+- [ ] fact_returns
+
+### Dimension Tables
+*Check all that apply.*
 - [ ] dim_product
 - [ ] dim_store
 - [ ] dim_date
@@ -40,9 +78,21 @@ Use this template to describe your retail analytics use case. Fill in each secti
 
 ---
 
-## SQL Query
+## Data Model Layers
 
-*Paste your SQL query here. This field is optional but strongly encouraged.*
+**Hierarchies:**
+> Example: "Date > Month > Year, Product > Category"
+
+**Aggregations:**
+> Example: "agg_store_return_rate_quarterly"
+
+**Snapshots:**
+> Example: "snap_inventory_daily"
+
+---
+
+## SQL Answer *(Optional)*
+*Paste your SQL query here.*
 
 ```sql
 -- Your SQL here
@@ -50,11 +100,5 @@ Use this template to describe your retail analytics use case. Fill in each secti
 
 ---
 
-## Notes (Optional)
-
-*Any additional notes about assumptions, schema variations, or edge cases.*
-
----
-
-*When you're ready, convert this to JSON format and save your file as:*
+*When ready, convert to JSON and save as:*
 `submissions/pending/retail_<topic>_<short_description>.json`

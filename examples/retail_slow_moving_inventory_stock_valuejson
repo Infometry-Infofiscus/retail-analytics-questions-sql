@@ -1,0 +1,41 @@
+{
+  "q_id": 3,
+  "difficulty": "Medium",
+  "db_type": "Relational (SQL)",
+  "domain": "Retail",
+  "instruction": "Which products have been sitting in inventory for more than 60 days without a sale, and what is their estimated stock value?",
+  "context": "Inventory management team runs monthly review to identify stagnant products. Zero sales in 60+ days ties up capital, consumes warehouse space, risks obsolescence. Report drives decisions on markdowns, clearance promotions, or supplier returns.",
+  "metrics_and_aggregation": [
+    {
+      "kpi_metric_name": "Days Since Last Sale",
+      "aggregation_formula": "DATEDIFF(CURRENT_DATE, MAX(last_sale_date)) per product_id"
+    },
+    {
+      "kpi_metric_name": "Units Sold Last 90 Days (Stock Proxy)",
+      "aggregation_formula": "SUM(quantity) WHERE full_date >= CURRENT_DATE - 90 days AND is_return = FALSE, grouped by product_id"
+    },
+    {
+      "kpi_metric_name": "Estimated Stagnant Stock Value",
+      "aggregation_formula": "ROUND(unit_cost * COALESCE(units_sold_last_90d, 0), 2) per product"
+    }
+  ],
+  "chain_of_thought": [
+    "Step 1: Goal is to surface all active products with no sales in 60+ days and estimate their tied-up capital value.",
+    "Step 2: Need product master (dim_product), sales transactions (fact_sales), and calendar dates (dim_date). No inventory quantity table exists — use 90-day sales volume as stock proxy.",
+    "Step 3: Filter to non-returns only (is_return = FALSE). Active products only from dim_product. Two date windows needed: last sale date (all-time) and 90-day sales volume.",
+    "Step 4: Estimated stock value = unit_cost × units_sold_last_90d. COALESCE handles products with zero recent sales. ROUND to 2 decimal places.",
+    "Step 5: Results ordered by estimated_stagnant_value DESC — highest capital-at-risk items surface first for prioritized action.",
+    "Step 6: HAVING filters to products where last_sale_date IS NULL (never sold) OR days_since_last_sale > 60. LEFT JOINs ensure products with zero sales history are still included.",
+    "Step 7: Stock value is a proxy, not actual on-hand quantity. Interpret with caution — high units_sold_last_90d on a stagnant item may indicate a sudden drop-off, not low stock."
+  ],
+  "schema_tables": {
+    "fact_tables": ["fact_sales"],
+    "dimension_tables": ["dim_product", "dim_date"]
+  },
+  "data_model_layers": {
+    "hierarchies": "Product > Sub-Category > Category > Brand",
+    "aggregations": "agg_slow_moving_inventory_monthly",
+    "snapshots": "snap_inventory_stagnant_60d"
+  },
+  "sql": "SELECT\n  p.product_id,\n  p.product_name,\n  p.category,\n  p.sub_category,\n  p.brand,\n  p.unit_cost,\n  COALESCE(recent.units_sold_last_90d, 0) AS units_sold_last_90d,\n  MAX(last_sale.last_sale_date) AS last_sale_date,\n  DATEDIFF(CURRENT_DATE, MAX(last_sale.last_sale_date)) AS days_since_last_sale,\n  ROUND(p.unit_cost * COALESCE(recent.units_sold_last_90d, 0), 2) AS estimated_stagnant_value\nFROM dim_product p\nLEFT JOIN (\n  SELECT\n    s.product_id,\n    MAX(d.full_date) AS last_sale_date\n  FROM fact_sales s\n  JOIN dim_date d ON s.date_id = d.date_id\n  WHERE s.is_return = FALSE\n  GROUP BY s.product_id\n) last_sale ON p.product_id = last_sale.product_id\nLEFT JOIN (\n  SELECT\n    s.product_id,\n    SUM(s.quantity) AS units_sold_last_90d\n  FROM fact_sales s\n  JOIN dim_date d ON s.date_id = d.date_id\n  WHERE s.is_return = FALSE\n    AND d.full_date >= CURRENT_DATE - INTERVAL '90 days'\n  GROUP BY s.product_id\n) recent ON p.product_id = recent.product_id\nGROUP BY\n  p.product_id, p.product_name, p.category, p.sub_category,\n  p.brand, p.unit_cost, recent.units_sold_last_90d\nHAVING\n  MAX(last_sale.last_sale_date) IS NULL\n  OR DATEDIFF(CURRENT_DATE, MAX(last_sale.last_sale_date)) > 60\nORDER BY estimated_stagnant_value DESC;"
+}

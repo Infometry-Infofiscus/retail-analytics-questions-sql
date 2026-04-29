@@ -1,0 +1,45 @@
+{
+  "q_id": 5,
+  "difficulty": "Hard",
+  "db_type": "Relational (SQL)",
+  "domain": "Retail",
+  "instruction": "Who are our top 20% of customers by total spend in the past 12 months, and what channels did they originally come from?",
+  "context": "CRM and loyalty team wants to identify high-value customers for a VIP retention program. Acquisition channel breakdown helps marketing allocate budget toward channels producing highest long-term customer value. Feeds into tiered loyalty programme design.",
+  "metrics_and_aggregation": [
+    {
+      "kpi_metric_name": "Total Spend per Customer (12 Months)",
+      "aggregation_formula": "SUM(net_sales) WHERE is_return = FALSE AND full_date >= CURRENT_DATE - 12 months, grouped by customer_id"
+    },
+    {
+      "kpi_metric_name": "Total Transactions per Customer",
+      "aggregation_formula": "COUNT(DISTINCT sale_id) per customer_id, HAVING >= 2"
+    },
+    {
+      "kpi_metric_name": "Spend Quintile (Top 20% = Quintile 1)",
+      "aggregation_formula": "NTILE(5) OVER (ORDER BY total_spend_12m DESC)"
+    },
+    {
+      "kpi_metric_name": "Average Order Value",
+      "aggregation_formula": "ROUND(total_spend_12m / total_transactions, 2) per customer"
+    }
+  ],
+  "chain_of_thought": [
+    "Step 1: Goal is to isolate top 20% customers by 12-month net spend and trace back their original acquisition channel for CRM targeting and budget allocation.",
+    "Step 2: Need sales facts (fact_sales) for spend aggregation, date dimension (dim_date) for 12-month window, and customer dimension (dim_customer) for acquisition channel and segment attributes.",
+    "Step 3: Filter to non-returns only (is_return = FALSE), within rolling 12-month window (full_date >= CURRENT_DATE - 12 months). Exclude one-time buyers via HAVING COUNT(DISTINCT sale_id) >= 2.",
+    "Step 4: CTE 1 (customer_spend) aggregates total net sales and transaction count per customer. CTE 2 (ranked_customers) applies NTILE(5) window function to bucket customers into spend quintiles — quintile 1 = top 20%.",
+    "Step 5: Final SELECT filters to spend_quintile = 1, joins dim_customer for channel/segment/region, orders by total_spend_12m DESC for CRM upload priority.",
+    "Step 6: NTILE splits evenly — if customer count not divisible by 5, top buckets get one extra row. Edge case: customers with exactly 2 transactions and borderline spend may sit just inside/outside quintile 1.",
+    "Step 7: avg_order_value (spend / transactions) included as secondary signal — high spenders with few large orders vs many small orders have different retention strategies."
+  ],
+  "schema_tables": {
+    "fact_tables": ["fact_sales"],
+    "dimension_tables": ["dim_customer", "dim_date"]
+  },
+  "data_model_layers": {
+    "hierarchies": "Customer > Segment > Region, Date > Month > Year",
+    "aggregations": "agg_customer_spend_12m, agg_customer_transactions",
+    "snapshots": "snap_top_customers_quarterly"
+  },
+  "sql": "WITH customer_spend AS (\n  SELECT\n    s.customer_id,\n    SUM(s.net_sales) AS total_spend_12m,\n    COUNT(DISTINCT s.sale_id) AS total_transactions\n  FROM fact_sales s\n  JOIN dim_date d ON s.date_id = d.date_id\n  WHERE s.is_return = FALSE\n    AND d.full_date >= CURRENT_DATE - INTERVAL '12 months'\n  GROUP BY s.customer_id\n  HAVING COUNT(DISTINCT s.sale_id) >= 2\n),\nranked_customers AS (\n  SELECT\n    cs.customer_id,\n    cs.total_spend_12m,\n    cs.total_transactions,\n    NTILE(5) OVER (ORDER BY cs.total_spend_12m DESC) AS spend_quintile\n  FROM customer_spend cs\n)\nSELECT\n  rc.customer_id,\n  c.customer_segment,\n  c.acquisition_channel,\n  c.region,\n  rc.total_spend_12m,\n  rc.total_transactions,\n  ROUND(rc.total_spend_12m / rc.total_transactions, 2) AS avg_order_value\nFROM ranked_customers rc\nJOIN dim_customer c ON rc.customer_id = c.customer_id\nWHERE rc.spend_quintile = 1\nORDER BY rc.total_spend_12m DESC;"
+}
