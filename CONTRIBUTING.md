@@ -33,8 +33,8 @@ The fastest way to contribute — no JSON editing required.
 Click **Fork** at the top of this GitHub page, then clone locally:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/retail-text-to-sql-dataset.git
-cd retail-text-to-sql-dataset
+git clone https://github.com/Infometry-Infofiscus/retail-analytics-questions-sql.git
+cd retail-analytics-questions-sql
 ```
 
 ---
