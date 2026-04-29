@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submission Review — Retail Analytics Text-to-SQL</title>
+  <meta name="description" content="Admin dashboard to review, approve, or reject community submissions." />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="review.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body class="review-body">
+
+  <!-- ── Login Gate ──────────────────────────────────────────── -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">🔒</div>
+      <h1 class="login-title">Admin Review Panel</h1>
+      <p class="login-subtitle">Enter your GitHub Personal Access Token to load pending submissions.<br>
+        The token needs <strong>Contents: Read &amp; Write</strong> on this repo.</p>
+
+      <div class="login-field">
+        <label for="pat-input">GitHub PAT</label>
+        <div class="pat-wrap">
+          <input type="password" id="pat-input" placeholder="github_pat_…" autocomplete="off" />
+          <button id="pat-toggle" class="pat-toggle" title="Show/hide token">👁</button>
+        </div>
+      </div>
+      <div id="login-error" class="login-error hidden"></div>
+      <button id="login-btn" class="btn btn-primary login-btn">
+        <span class="btn-text">Load Submissions</span>
+        <span class="btn-icon">→</span>
+      </button>
+      <p class="login-note">Token is used only in this browser session and is never stored.</p>
+    </div>
+  </div>
+
+  <!-- ── Dashboard ──────────────────────────────────────────── -->
+  <div id="dashboard" class="dashboard hidden">
+
+    <header class="dash-header">
+      <div class="dash-header-inner">
+        <div>
+          <div class="dash-badge">Admin Panel</div>
+          <h1 class="dash-title">Submission Review</h1>
+        </div>
+        <div class="dash-controls">
+          <div class="dash-stats" id="dash-stats">
+            <span class="ds-item" id="stat-pending">⏳ 0 Pending</span>
+            <span class="ds-item ds-approved" id="stat-reviewed">✅ 0 Reviewed</span>
+            <span class="ds-item ds-rejected" id="stat-rejected">❌ 0 Rejected</span>
+          </div>
+          <button id="refresh-btn" class="btn btn-secondary btn-sm">↺ Refresh</button>
+          <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="dash-main">
+
+      <!-- Filter tabs -->
+      <div class="tab-bar">
+        <button class="tab-btn tab-active" data-tab="pending">⏳ Pending</button>
+        <button class="tab-btn" data-tab="reviewed">✅ Reviewed</button>
+        <button class="tab-btn" data-tab="rejected">❌ Rejected</button>
+      </div>
+
+      <!-- Loading / empty states -->
+      <div id="dash-loading" class="dash-state hidden">
+        <div class="spinner"></div>
+        <p>Loading submissions…</p>
+      </div>
+      <div id="dash-empty" class="dash-state hidden">
+        <div class="empty-icon">📭</div>
+        <p>No submissions in this folder yet.</p>
+      </div>
+      <div id="dash-error-msg" class="dash-state hidden">
+        <div class="empty-icon">⚠️</div>
+        <p id="dash-error-text"></p>
+      </div>
+
+      <!-- Submission list -->
+      <div id="submission-list" class="submission-list"></div>
+
+    </main>
+  </div>
+
+  <!-- ── Detail Modal ────────────────────────────────────────── -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modal-title" class="modal-title"></h2>
+        <button id="modal-close" class="modal-close" title="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-meta" id="modal-meta"></div>
+        <pre id="modal-json" class="json-output modal-json"></pre>
+      </div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <script src="review.js"></script>
+</body>
+</html>

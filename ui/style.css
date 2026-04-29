@@ -569,6 +569,53 @@ form {
   border-radius: 3px;
 }
 
+/* ──────────────── SUBMIT STATUS ──────────────── */
+
+.submit-status {
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  animation: fadeSlideIn 0.3s ease;
+}
+
+.submit-status a {
+  color: var(--accent-secondary);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.2s;
+}
+
+.submit-status a:hover {
+  text-decoration-color: var(--accent-secondary);
+}
+
+.submit-status code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: rgba(168,216,168,0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.submit-status--loading {
+  background: rgba(77,157,224,0.08);
+  border: 1px solid rgba(77,157,224,0.2);
+  color: var(--text-secondary);
+}
+
+.submit-status--success {
+  background: rgba(62,207,142,0.08);
+  border: 1px solid rgba(62,207,142,0.25);
+  color: var(--accent-success);
+}
+
+.submit-status--error {
+  background: rgba(255,107,107,0.07);
+  border: 1px solid rgba(255,107,107,0.2);
+  color: #ff9a9a;
+}
+
 /* ──────────────── FOOTER ──────────────── */
 
 .site-footer {

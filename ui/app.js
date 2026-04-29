@@ -1,20 +1,35 @@
 /**
  * Retail Analytics Text-to-SQL Dataset
  * Submission Form — app.js
+ *
+ * On submit, the generated JSON is pushed directly to:
+ *   submissions/pending/<filename>.json
+ * via the GitHub Contents API using a write-only fine-grained PAT.
  */
 
 (function () {
   'use strict';
 
+  // ── GitHub Config ────────────────────────────────────────────
+  // Fine-grained PAT: Contents → Write  (this repo only)
+  // Replace GITHUB_SUBMISSION_TOKEN with a real fine-grained PAT
+  // before deploying.  Worst-case risk: spam in pending/ (you review all anyway).
+  const GITHUB_OWNER  = 'Infometry-Infofiscus';
+  const GITHUB_REPO   = 'retail-analytics-questions-sql';
+  const GITHUB_BRANCH = 'main';
+  // ⚠️  Set your fine-grained PAT here (Contents: Write, this repo only):
+  const GITHUB_TOKEN  = 'REPLACE_WITH_YOUR_FINE_GRAINED_PAT';
+
   // ── DOM References ──────────────────────────────────────────
 
-  const form           = document.getElementById('submission-form');
-  const submitBtn      = document.getElementById('submit-btn');
-  const resetBtn       = document.getElementById('reset-btn');
-  const copyBtn        = document.getElementById('copy-btn');
-  const successBanner  = document.getElementById('success-banner');
-  const outputSection  = document.getElementById('output-section');
-  const jsonOutput     = document.getElementById('json-output');
+  const form          = document.getElementById('submission-form');
+  const submitBtn     = document.getElementById('submit-btn');
+  const resetBtn      = document.getElementById('reset-btn');
+  const copyBtn       = document.getElementById('copy-btn');
+  const successBanner = document.getElementById('success-banner');
+  const outputSection = document.getElementById('output-section');
+  const jsonOutput    = document.getElementById('json-output');
+  const submitStatus  = document.getElementById('submit-status');
 
   const fields = {
     question:       document.getElementById('question'),
@@ -89,55 +104,110 @@
   // ── JSON Generation ─────────────────────────────────────────
 
   function buildSubmission() {
-    const submission = {
+    return {
       question:       fields.question.value.trim(),
       context:        fields.context.value.trim(),
       business_logic: fields.business_logic.value.trim(),
       tables_used:    getSelectedTables(),
-      sql:            fields.sql.value.trim() || null,
+      sql:            fields.sql.value.trim() || '',
+      submitted_at:   new Date().toISOString(),
     };
-
-    // Remove null sql field if empty
-    if (!submission.sql) {
-      delete submission.sql;
-      submission.sql = '';
-    }
-
-    return submission;
   }
 
   function formatJSON(obj) {
     return JSON.stringify(obj, null, 2);
   }
 
+  // ── Safe filename from question text ─────────────────────────
+
+  function buildFilename(question) {
+    const slug = question
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 6)
+      .join('_');
+    const ts = Date.now();
+    return `retail_${slug}_${ts}.json`;
+  }
+
   // ── Syntax Highlighting (lightweight) ───────────────────────
 
   function highlightJSON(jsonString) {
-    return jsonString
-      .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+    return jsonString.replace(
+      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+      match => {
         if (/^"/.test(match)) {
-          if (/:$/.test(match)) {
-            return `<span style="color:#7eb8e0">${match}</span>`;
-          }
+          if (/:$/.test(match)) return `<span style="color:#7eb8e0">${match}</span>`;
           return `<span style="color:#b5ddb5">${match}</span>`;
         }
-        if (/true|false/.test(match)) {
-          return `<span style="color:#e8c547">${match}</span>`;
-        }
-        if (/null/.test(match)) {
-          return `<span style="color:#888">${match}</span>`;
-        }
+        if (/true|false/.test(match)) return `<span style="color:#e8c547">${match}</span>`;
+        if (/null/.test(match))       return `<span style="color:#888">${match}</span>`;
         return `<span style="color:#d4a5f5">${match}</span>`;
+      }
+    );
+  }
+
+  // ── GitHub API: push file ─────────────────────────────────────
+
+  async function pushToGitHub(filename, jsonContent) {
+    if (!GITHUB_TOKEN || GITHUB_TOKEN === 'REPLACE_WITH_YOUR_FINE_GRAINED_PAT') {
+      return { ok: false, error: 'GitHub token not configured. Please set GITHUB_TOKEN in app.js.' };
+    }
+
+    const path    = `submissions/pending/${filename}`;
+    const apiUrl  = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`;
+    const content = btoa(unescape(encodeURIComponent(jsonContent))); // base64
+
+    try {
+      const res = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${GITHUB_TOKEN}`,
+          'Content-Type':  'application/json',
+          'Accept':        'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        body: JSON.stringify({
+          message: `feat: add community submission — ${filename}`,
+          content: content,
+          branch:  GITHUB_BRANCH,
+        }),
       });
+
+      if (res.ok) {
+        const data = await res.json();
+        return { ok: true, url: data.content.html_url };
+      } else {
+        const err = await res.json();
+        return { ok: false, error: err.message || `HTTP ${res.status}` };
+      }
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
+  // ── UI: Status helper ─────────────────────────────────────────
+
+  function setStatus(type, message) {
+    submitStatus.className = `submit-status submit-status--${type}`;
+    submitStatus.innerHTML = message;
+    submitStatus.style.display = 'block';
+  }
+
+  function setSubmitting(on) {
+    submitBtn.disabled = on;
+    submitBtn.querySelector('.btn-text').textContent = on ? 'Submitting…' : 'Submit & Save';
+    submitBtn.querySelector('.btn-icon').textContent  = on ? '⏳' : '→';
   }
 
   // ── Form Submit ─────────────────────────────────────────────
 
-  form.addEventListener('submit', function (e) {
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
 
     if (!validate()) {
-      // Scroll to first error
       const firstError = document.querySelector('.field-error.visible');
       if (firstError) {
         firstError.closest('.field-group').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -147,19 +217,40 @@
 
     const submission = buildSubmission();
     const formatted  = formatJSON(submission);
+    const filename   = buildFilename(submission.question);
 
-    // Show output
-    jsonOutput.innerHTML = highlightJSON(formatted);
+    // Show JSON preview immediately
+    jsonOutput.innerHTML     = highlightJSON(formatted);
+    jsonOutput.dataset.raw   = formatted;
     outputSection.classList.remove('hidden');
-    successBanner.classList.remove('hidden');
 
-    // Scroll to output
+    // Push to GitHub
+    setSubmitting(true);
+    setStatus('loading', '⏳ &nbsp;Saving your submission to GitHub…');
+
     setTimeout(() => {
       outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
 
-    // Store raw JSON for copying
-    jsonOutput.dataset.raw = formatted;
+    const result = await pushToGitHub(filename, formatted);
+
+    setSubmitting(false);
+
+    if (result.ok) {
+      successBanner.classList.remove('hidden');
+      successBanner.querySelector('.success-filename').textContent = filename;
+      setStatus(
+        'success',
+        `✅ &nbsp;Saved to <code>submissions/pending/${filename}</code>. ` +
+        `<a href="${result.url}" target="_blank" rel="noopener">View on GitHub →</a>`
+      );
+    } else {
+      setStatus(
+        'error',
+        `❌ &nbsp;GitHub save failed: <em>${result.error}</em><br>` +
+        `You can still copy the JSON below and submit it manually via Pull Request.`
+      );
+    }
   });
 
   // ── Copy to Clipboard ────────────────────────────────────────
@@ -169,11 +260,7 @@
     if (!raw) return;
 
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(raw).then(() => {
-        showCopied();
-      }).catch(() => {
-        fallbackCopy(raw);
-      });
+      navigator.clipboard.writeText(raw).then(showCopied).catch(() => fallbackCopy(raw));
     } else {
       fallbackCopy(raw);
     }
@@ -183,15 +270,10 @@
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';
-    ta.style.opacity = '0';
+    ta.style.opacity  = '0';
     document.body.appendChild(ta);
     ta.select();
-    try {
-      document.execCommand('copy');
-      showCopied();
-    } catch (err) {
-      console.error('Copy failed:', err);
-    }
+    try { document.execCommand('copy'); showCopied(); } catch (err) { console.error('Copy failed:', err); }
     document.body.removeChild(ta);
   }
 
@@ -199,7 +281,7 @@
     copyBtn.textContent = '✓ Copied!';
     copyBtn.classList.add('copied');
     setTimeout(() => {
-      copyBtn.textContent = 'Copy to Clipboard';
+      copyBtn.textContent = 'Copy JSON';
       copyBtn.classList.remove('copied');
     }, 2500);
   }
@@ -211,6 +293,7 @@
     clearErrors();
     outputSection.classList.add('hidden');
     successBanner.classList.add('hidden');
+    submitStatus.style.display = 'none';
     jsonOutput.textContent = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
@@ -227,7 +310,6 @@
         item.style.borderColor = '';
         item.style.background  = '';
       }
-      // Clear table error if at least one is checked
       if (getSelectedTables().length > 0) {
         errors.tables.textContent = '';
         errors.tables.classList.remove('visible');
