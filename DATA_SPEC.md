@@ -1,4 +1,4 @@
-# DATA_SPEC - Query Entry Form (UI-Aligned)
+# DATA_SPEC - Query Entry Form
 
 ## 1. Purpose
 
