@@ -1,4 +1,3 @@
-```markdown
 # 🛒 Retail Analytics Text-to-SQL Dataset
 
 > A community-driven, open dataset of real-world retail analytics use cases for training and benchmarking text-to-SQL systems.
