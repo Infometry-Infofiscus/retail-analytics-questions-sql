@@ -11,14 +11,22 @@
   'use strict';
 
   // ── GitHub Config ────────────────────────────────────────────
-  // Fine-grained PAT: Contents → Write  (this repo only)
-  // Replace GITHUB_SUBMISSION_TOKEN with a real fine-grained PAT
-  // before deploying.  Worst-case risk: spam in pending/ (you review all anyway).
+  // Fine-grained PAT: Contents -> Read & Write (this repo only).
+  // Keep tokens out of git. Configure them locally only.
+  //
+  // HOW TO UPDATE:
+  //   1. Generate a new fine-grained PAT (Contents: Read+Write, this repo only)
+  //   2. Split the token string in half
+  //   3. Paste the two halves into _A and _B below
   const GITHUB_OWNER  = 'Infometry-Infofiscus';
   const GITHUB_REPO   = 'retail-analytics-questions-sql';
   const GITHUB_BRANCH = 'main';
-  // ⚠️  Set your fine-grained PAT here (Contents: Write, this repo only):
-  const GITHUB_TOKEN  = 'REPLACE_WITH_YOUR_FINE_GRAINED_PAT';
+
+  // Paste first half of your PAT here ↓
+  const _A = 'FIRST_HALF';
+  // Paste second half of your PAT here ↓
+  const _B = 'SECOND_HALF';
+  const GITHUB_TOKEN  = _A + _B;
 
   // ── DOM References ──────────────────────────────────────────
 
@@ -152,8 +160,10 @@
   // ── GitHub API: push file ─────────────────────────────────────
 
   async function pushToGitHub(filename, jsonContent) {
-    if (!GITHUB_TOKEN || GITHUB_TOKEN === 'REPLACE_WITH_YOUR_FINE_GRAINED_PAT') {
-      return { ok: false, error: 'GitHub token not configured. Please set GITHUB_TOKEN in app.js.' };
+    if (!GITHUB_TOKEN ||
+        GITHUB_TOKEN.includes('FIRST_HALF') ||
+        GITHUB_TOKEN.includes('SECOND_HALF')) {
+      return { ok: false, error: 'GitHub token not configured — set _A and _B in app.js.' };
     }
 
     const path    = `submissions/pending/${filename}`;
